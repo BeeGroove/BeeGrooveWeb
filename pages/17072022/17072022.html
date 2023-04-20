@@ -1,0 +1,105 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="../../css/stylesheet.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/heading.css">
+  <link rel="stylesheet" href="../../css/body.css">
+  <script src="https://kit.fontawesome.com/e37e0501b8.js" crossorigin="anonymous"></script>
+
+  <title>HRTimer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+</head>
+
+<body><br><center>
+  <div style="display: inline-block; vertical-align:middle;">
+  <a href="../../index.html" style="text-decoration: none;"><b>BEEGROVE</b> <i class="fa-solid fa-microchip" style="font-size:26px"></i></a> 
+
+  <br><hr/><div style="text-align: justify;display: inline-block; width: 100%;">
+  <a class="title" href="../../pages/contact/contact.html">CONTACT</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a class="title" href="../../pages/references/references.html">REFERENCES</a>
+  </center><br><br>
+
+  <p>AUTHOR: <a style="text-decoration: none;"><u>BeeGroove Members</u> <i class="fa-solid fa-microchip"></i></a></p>
+  <p>17/07/2022 - Linux Kernel HRTimer, a brief intro</p>
+
+<p>
+  Before talking about hrtimer we need to introduce low precisione timer into Linux Kernel subsystem.
+  Low precision timer can only provide millisecond level timing time, because it actually depends on jiffies.
+  A jiffies time is the number of ticks since the Linux Kernel boot up. In particular, A jiffy is a kernel unit of
+  time declared in <linux/jiffies.h>. To understand jiffies, we need to introduce a new constant, HZ,
+  which is the number of times jiffies is incremented in one second. Each increment is called a tick.
+  In other words, HZ represents the size of a jiffy.
+  HZ depends on the hardware and on the kernel version, and also determines how frequently the clock interrupt fires.
+  This means that jiffies is incremented HZ times every second. If HZ = 1,000, then it is incremented 1,000 times.
+  For example, if HZ is configured as 250, then a jiffies is 4ms.
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">jiffies = second * CONFIG_HZ
+second = jiffies / CONFIG_HZ
+</code>
+</pre>
+
+<p>
+  After this brief intro to jiffies we can now talk about hrtimer. High resolution timers (hrtimer)
+  in the Linux kernel is timers that do not use a time specification based on jiffies, but employ nanosecond time stamps.
+  In fact, the low resolution timers are implemented on top of the high-resolution mechanism, but that is another story.
+  Components of the hrtimer framework that are not universally applicable (not used by the low-resolution timers) is selected
+  by CONFIG_HIGH_RES_TIMERS in the kernel configuration. Below a code example:
+</p>
+
+
+<pre>
+<code id="code" class="hljs language-plaintext">#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
+
+static struct hrtimer test_hrtimer;
+static u64 sampling_period_ms = 100; // 100ms
+static u32 loop = 0;
+
+static enum hrtimer_restart test_hrtimer_handler(struct hrtimer *timer)
+{
+    pr_info("test_hrtimer_handler: %u\n", ++loop);
+    hrtimer_forward_now(&test_hrtimer, ms_to_ktime(sampling_period_ms));
+    return HRTIMER_RESTART;
+}
+
+static int __init test_hrtimer_init(void)
+{
+    hrtimer_init(&test_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+    test_hrtimer.function = &test_hrtimer_handler;
+    hrtimer_start(&test_hrtimer, ms_to_ktime(sampling_period_ms), HRTIMER_MODE_REL);
+    pr_info("init test_hrtimer.\n");
+
+    return 0;
+}
+
+static void __exit test_hrtimer_exit(void)
+{
+    hrtimer_cancel(&test_hrtimer );
+    pr_info("exit test_hrtimer.\n");
+    return;
+}
+
+module_init(test_hrtimer_init);
+module_exit(test_hrtimer_exit);
+
+MODULE_LICENSE("GPL");
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<div class="heading">References</div><hr />
+<ul class="columns" data-columns="2">
+        <li><a target="_blank" href="https://www.oreilly.com/library/view/linux-device-drivers/9781785280009/4041820a-bbe4-4502-8ef9-d1913e133332.xhtml">Jiffies and HZ</a></li>
+        <li><a target="_blank" href="https://stackoverflow.com/questions/54777424/using-hrtimers-in-the-linux-kernel">Using hrtimers in the Linux Kernel</a></li>
+        <li><a target="_blank" href="https://www.marcusfolkesson.se/blog/high-resolution-timers/">High-resolution-timers</a></li>
+</ul>
+
+</body>
+</html>

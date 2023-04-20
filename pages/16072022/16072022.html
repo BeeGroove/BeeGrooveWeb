@@ -1,0 +1,343 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="../../css/stylesheet.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/heading.css">
+  <link rel="stylesheet" href="../../css/body.css">
+  <script src="https://kit.fontawesome.com/e37e0501b8.js" crossorigin="anonymous"></script>
+
+  <title>Linux Kernel Dev</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+</head>  
+
+<body><br><center>
+  <div style="display: inline-block; vertical-align:middle;">
+  <a href="../../index.html" style="text-decoration: none;"><b>BEEGROVE</b> <i class="fa-solid fa-microchip" style="font-size:26px"></i></a> 
+
+  <br><hr/><div style="text-align: justify;display: inline-block; width: 100%;">
+  <a class="title" href="../../pages/contact/contact.html">CONTACT</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a class="title" href="../../pages/references/references.html">REFERENCES</a>
+  </center><br><br>
+
+  <p>AUTHOR: <a style="text-decoration: none;"><u>BeeGroove Members</u> <i class="fa-solid fa-microchip"></i></a></p>
+  <p>16/07/2022 - Linux Kernel Mainline Contribution. Development Workflow</p>
+
+<p>
+    This article describe the main steps that needs to be done to start to contribute to <a target="_blank" href="https://github.com/torvalds/linux">Linux Kernel</a>
+</p>
+
+
+<div class="heading">Configure git</div><hr />
+<p>
+    First step is configure git to be able to send mail via <a target="_blank" href="https://git-scm.com/docs/git-send-email">git send-email</a> command and avoid trailing space into commit.
+    In our daily work we us the following <a target="_blank" href="https://git-scm.com/docs/git-config">~/.gitconfig</a>
+</p>
+<pre>
+<code id="code" class="hljs language-plaintext">[user]
+  email = mail-address
+  name = Name Surname
+[core]
+  editor = vim
+  whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+  excludesfile = ~/.gitignore
+[sendemail]
+  smtpuser = mail-address
+  smtpserver = smtp.gmail.com
+  smtpencryption = tls
+  smtpserverPort = 587
+  smtppass = pwd [1]
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  [1] Google Account -> Security -> Signing in to Google : App passwords
+</p>
+
+<div class="heading">VIM SETUP</div><hr />
+<p>
+    Second step is configure vim to be able to avoid trailing space into commit. This is the ~/.vimrc that I recommend</a>
+</p>
+<pre>
+<code id="code" class="hljs language-plaintext">filetype plugin indent on
+syntax on
+set title
+set tabstop=8
+set softtabstop=8
+set shiftwidth=8
+set noexpandtab
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<div class="heading">Linux Kernel Mailing List Subscription</div><hr />
+<p>
+  Once you configure mail account, you can subscribe to a Kernel topic mailing list using <a target="_blank" href="http://vger.kernel.org/vger-lists.html">majordomo list</a>.
+  Subscribe for example, by sending subscribe linux-rtc in the message body to <a href="mailto: majordomo@vger.kernel.org">majordomo@vger.kernel.org <i class="fa fa-envelope"></i></a><br>
+<br>
+
+E.g.
+
+<pre>
+<code id="code" class="hljs language-plaintext">subscribe linux-rtc
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</p>
+
+<div class="heading">Clone mainline Linux Kernel and others Maintainers Kernel Tree</div><hr />
+<p>
+First of all clone Linus Torvalds Mainline Linux Kernel:
+<br>
+
+<pre>
+<code id="code" class="hljs language-plaintext">git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Check from <a target="_blank" href="https://git.kernel.org/pub/scm/linux/kernel/git/">Maintainers list</a> the tree on which you are focus and add this to your local tree
+
+<br>
+E.g.
+
+<pre>
+<code id="code" class="hljs language-plaintext">cd linux
+git remote add mchehab https://git.kernel.org/pub/scm/linux/kernel/git/mchehab/linux-media.git/
+git fetch mchehab
+git fetch --tags mchehab
+git branch -a
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+</p>
+
+
+<div class="heading">Send Patch</div><hr />
+
+<p>
+Start to check and write some changes into the linux tree, after you are sure about what you have done commit and send patch. I suggest
+to work in a separate working branch, in this way during review you can update remote (git remote update) and rebase your working branch
+on top of the target branch
+
+<pre>
+<code id="code" class="hljs language-plaintext">git remote update
+git checkout mchehab/linux-media
+git checkout -b working_linux-media
+git add -p file-changed
+git commit -s -v
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Commit message and body must be follow the linux kernel coding style, don't forget to take a look at the <a target="_blank" href="https://www.kernel.org/doc/html/latest/process/submitting-patches.html">doc</a>.
+I suggest to check the file history of the file on which you plan to make some changes using git log command, and use this as reference to write your new commit.
+
+<pre>
+<code id="code" class="hljs language-plaintext">git remote update
+git log drivers/media/i2c/ov5640.c
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Once you are done with your command create the patch using git format-patch command:
+
+<pre>
+<code id="code" class="hljs language-plaintext">git format-patch HEAD -1
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Then send patch by mail using git send-email adding Maintainers in cc
+
+<pre>
+<code id="code" class="hljs language-plaintext">git send-email --cc-cmd='./scripts/get_maintainer.pl --norolestats your.patch>' --cc some.people@gmail.com --to you@gmail.com your.patch
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+If all is done properly you can see your patch on <a target="_blank" href="https://lkml.org/">lkml.org</a>
+
+</p>
+
+<div class="heading">Send Series (patchset)</div><hr />
+
+<p>
+In order to send a series(patchset or multiple patch) you must follow the previous section, in this case you made multiple commits.
+To create the series I suggeste to create a temporary folder on which you can place you series:
+
+<pre>
+<code id="code" class="hljs language-plaintext">mkdir -p series-ov5640/v1
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Then create the series inside this folder using:
+
+<pre>
+<code id="code" class="hljs language-plaintext">git format-patch HEAD -N --subject-prefix="PATCH" --cover-letter -o series-ov5640/v1
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Where N is the number of commits you have to upload. This command create also for you a <a target="_blank" href="https://lkml.org/lkml/2022/7/13/958">cover letter</a> on which you can present you series.
+
+</p>
+
+<div class="heading">Review Patch/Series workflow</div><hr />
+
+<p>
+
+If you receive feedback on a patch, and were asked to update the patch, you need to version the patches that you re-send. A new version number lets reviewers know you made changes to the patch, and they should review it again.
+An example of what this would look like is:
+
+<pre>
+<code id="code" class="hljs language-plaintext">[PATCH] Foo: Fix these things
+And the updated versioning for a second revision
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<pre>
+<code id="code" class="hljs language-plaintext">[PATCH v2] Foo: Fix these things better
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+In case of more than 2 versions, make sure to include what has changed in each version below the --- so that there is a logical flow and the maintainers do not have to dig up previous versions.
+The most recently changed version should be described first followed by the subsequent changes. Have a look at this patch example with 3 versions to get a better idea.<br>
+<br>
+E.g.
+
+<pre>
+<code id="code" class="hljs language-plaintext">[PATCH v7 4/6] media: ov5693: add support for acpi clock-frequency prop
+
+Add support for ACPI-based platforms that specify the clock frequency by
+using the "clock-frequency" property instead of specifying a clock
+provider reference
+
+Signed-off-by: Tommaso Merciai <tommaso.merciai@amarulasolutions.com>
+Reviewed-by: Jacopo Mondi <jacopo@jmondi.org>
+---
+Changes since v2:
+  - Fix commit body as suggested by Sakari, Jacopo
+  - Add details to commit body as suggested by Jacopo
+  - Move ov5693_check_hwcfg into ov5693_hwcfg
+  - Fix xvclk_rate position as suggested by Jacopo
+  - Use devm_clk_get_optional instead of devm_clk_get as suggested Jacopo
+
+Changes since v3:
+  - Fix commit body as suggested by Jacopo
+  - Add reviewed-by tags, suggested by Jacopo, Krzysztof
+
+Changes since v4:
+  - Remove wrong Sakari reviewed-by tag, suggested by Krzysztof, Sakari
+  - Revert ov5693_check_hwcfg function changes. Keep clk init on probe function
+as suggested by Sakari
+  - Fix commit body
+  - Fix commit msg
+
+  drivers/media/i2c/ov5693.c | 22 +++++++++++++++++-----
+  1 file changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/media/i2c/ov5693.c b/drivers/media/i2c/ov5693.c
+index d2adc5513a21..701468267f20 100644
+--- a/drivers/media/i2c/ov5693.c
++++ b/drivers/media/i2c/ov5693.c
+@@ -1408,13 +1408,25 @@ static int ov5693_probe(struct i2c_client *client)
+  
+    v4l2_i2c_subdev_init(&ov5693->sd, client, &ov5693_ops);
+  
+-	ov5693->xvclk = devm_clk_get(&client->dev, "xvclk");
+-	if (IS_ERR(ov5693->xvclk)) {
+-		dev_err(&client->dev, "Error getting clock\n");
+-		return PTR_ERR(ov5693->xvclk);
++	ov5693->xvclk = devm_clk_get_optional(&client->dev, "xvclk");
++	if (IS_ERR(ov5693->xvclk))
++		return dev_err_probe(&client->dev, PTR_ERR(ov5693->xvclk),
++				     "failed to get xvclk: %ld\n",
++				     PTR_ERR(ov5693->xvclk));
++
++	if (ov5693->xvclk) {
++		xvclk_rate = clk_get_rate(ov5693->xvclk);
++	} else {
++		ret = fwnode_property_read_u32(dev_fwnode(&client->dev),
++				     "clock-frequency",
++				     &xvclk_rate);
++
++		if (ret) {
++			dev_err(&client->dev, "can't get clock frequency");
++			return ret;
++		}
+    }
+  
+-	xvclk_rate = clk_get_rate(ov5693->xvclk);
+    if (xvclk_rate != OV5693_XVCLK_FREQ)
+      dev_warn(&client->dev, "Found clk freq %u, expected %u\n",
+        xvclk_rate, OV5693_XVCLK_FREQ);
+-- 
+2.25.1
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+For example the v2,v3..vN of the series can be created first creating a temporary folder for the series
+
+<pre>
+<code id="code" class="hljs language-plaintext">mkdir -p series-ov5640/v2
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Then create the vN of the series using:
+
+<pre>
+<code id="code" class="hljs language-plaintext">git format-patch HEAD -N --subject-prefix="PATCH vN" --cover-letter -o series-ov5640/v2
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Now you can send the series using:
+
+<pre>
+<code id="code" class="hljs language-plaintext">git send-email --cc-cmd='./scripts/get_maintainer.pl --norolestats ./series-ov5640/v2/0001*.patch' --cc <mail> ./series-ov5640/v2
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+Don't forget to check <a target="_blank" href="https://lkml.org/">lkml.org</a> :)
+
+
+</p>
+
+<div class="heading">References</div><hr />
+<ul class="columns" data-columns="2">
+        <li><a target="_blank" href="https://git.kernel.org/pub/scm/linux/kernel/git/">git.kernel.org/pub/scm/linux/kernel/git/</a></li>
+        <li><a target="_blank" href="https://lkml.org/lkml/2022/7/13/957">lkml.org/lkml/2022/7/13/957</a></li>
+        <li><a target="_blank" href="https://lkml.org/lkml/2022/7/13/958">lkml.org/lkml/2022/7/13/958</a></li>
+        <li><a target="_blank" href="https://www.kernel.org/doc/html/latest/process/submitting-patches.html">submitting-patches</a></li>
+        <li><a target="_blank" href="https://gist.github.com/Scott31393/2a8296fe0a04648838117b8ebb21ed40">gist.github.com/Scott31393</a></li>
+</ul>
+
+</body>
+</html>

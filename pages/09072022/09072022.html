@@ -1,0 +1,205 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="../../css/stylesheet.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/heading.css">
+  <link rel="stylesheet" href="../../css/body.css">
+  <script src="https://kit.fontawesome.com/e37e0501b8.js" crossorigin="anonymous"></script>
+
+  <title>Cockpit RPI OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+
+<body><br><center>
+  <div style="display: inline-block; vertical-align:middle;">
+  <a href="../../index.html" style="text-decoration: none;"><b>BEEGROVE</b> <i class="fa-solid fa-microchip" style="font-size:26px"></i></a> 
+
+  <br><hr/><div style="text-align: justify;display: inline-block; width: 100%;">
+  <a class="title" href="../../pages/contact/contact.html">CONTACT</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a class="title" href="../../pages/references/references.html">REFERENCES</a>
+  </center><br><br>
+
+  <p>AUTHOR: <a style="text-decoration: none;"><u>BeeGroove Members</u> <i class="fa-solid fa-microchip"></i></a></p>
+  <p>09/07/2022 - Cockpit custom plugin. A brief example on Raspberry Pi OS</p>
+
+<p>
+  Cockpit is a service for Linux that provides a web-based interface for managing and monitoring hosts.
+  It can be deployed in any size organization, even a small office, and it's a great way for home users
+  to maintain the family IT infrastructure. I use it to manage and monitor all of the computers in my
+  house—including Raspberry Pi. Cockpit is a free and open source software project released under the LGPL v2.1+.
+</p>
+
+<div class="heading">Install</div><hr />
+
+<p>
+  After succesfully download and install <a target="_blank" href="https://www.raspberrypi.com/software/operating-systems/">Raspberry Pi OS</a>
+  into your Raspberry Pi board it's time to install cockpit package:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">sudo apt-get install cockpit
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  Cockpit package requires 60.4 kB of disk space.Together with its several package dependencies, total usage is 115MB.
+  After installation is done we can check the status of cockpit service using:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">$ systemctl status cockpit.socket
+
+● cockpit.socket - Cockpit Web Service Socket
+    Loaded: loaded (/lib/systemd/system/cockpit.socket; enabled; vendor preset: enabled)
+    Active: active (listening) since Tue 2021-05-04 10:24:43 EDT; 35s ago
+      Docs: man:cockpit-ws(8)
+    Listen: 0.0.0.0:9090 (Stream)
+  Process: 6563 ExecStartPost=/usr/share/cockpit/motd/update-motd  localhost (code=exited, status=0/SUCCESS)
+  Process: 6570 ExecStartPost=/bin/ln -snf active.motd /run/cockpit/motd (code=exited, status=0/SUCCESS)
+    Tasks: 0 (limit: 2181)
+    CGroup: /system.slice/cockpit.socket
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  Cockpit UI can be checked opening browser and connect to http://rpi-ip:9090
+</p>
+
+<img src="/images/cockpit.png" alt="">
+
+<div class="heading">Add Cockpit plugin</div><hr />
+
+<p>
+  Add Cockpit plugin is really fast. Documentation suggest as starting point Pinger plugin. This can be installed
+  using the following commands:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">mkdir pinger; cd pinger
+curl -O https://raw.githubusercontent.com/cockpit-project/cockpit/master/examples/pinger/manifest.json
+curl -O https://raw.githubusercontent.com/cockpit-project/cockpit/master/examples/pinger/ping.html
+curl -O https://raw.githubusercontent.com/cockpit-project/cockpit/master/examples/pinger/pinger.js
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  Now create cockpit plugin folder and link pinger folder inside:
+</p>
+
+
+<pre>
+<code id="code" class="hljs language-plaintext">mkdir -p ~/.local/share/cockpit
+ln -snf $PWD ~/.local/share/cockpit/pinger
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  Installed package can be listed using:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">cockpit-bridge --packages
+
+cockpit-bridge --packages
+...
+pinger: /home/.../.local/share/cockpit/pinger
+...
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+
+<div class="heading">Customize Cockpit plugin</div><hr />
+
+<p>
+  Pinger plugin-in is symply a starting point. We can now customize this in order to run for example a python
+  script "hello_world.py". To do this we need to modify pinger.js into the following:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">const address = document.getElementById("address");
+const output = document.getElementById("output");
+const result = document.getElementById("result");
+const button = document.getElementById("ping");
+
+function ping_run() {
+    /* global cockpit */
+    cockpit.spawn(["/bin/sh", "-c", "python /home/user/hello_world.py"])
+            .stream(ping_output)
+            .then(ping_success)
+            .catch(ping_fail);
+
+    result.innerHTML = "";
+    output.innerHTML = "";
+}
+
+function ping_success() {
+    result.style.color = "green";
+    result.innerHTML = "success";
+}
+
+function ping_fail() {
+    result.style.color = "red";
+    result.innerHTML = "fail";
+}
+
+function ping_output(data) {
+    output.append(document.createTextNode(data));
+}
+
+// Connect the button to starting the "ping" process
+button.addEventListener("click", ping_run);
+
+// Send a 'init' message.  This tells integration tests that we are ready to go
+cockpit.transport.wait(function() { });
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  From the original pinger.js file we modify only one function:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">function ping_run() {
+  /* global cockpit */
+  cockpit.spawn(["/bin/sh", "-c", "python /home/user/hello_world.py"])
+          .stream(ping_output)
+          .then(ping_success)
+          .catch(ping_fail);
+
+  result.innerHTML = "";
+  output.innerHTML = "";
+}
+</code>
+</pre>
+<script src="/javascripts/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<p>
+  This function instead of ping now run the python script in /home/user/hello_world.py.
+  We let the other part of the develop to the reader. :)
+</p>
+
+
+<div class="heading">References</div><hr />
+<ul class="columns" data-columns="2">
+        <li><a target="_blank" href="https://opensource.com/article/20/11/cockpit-server-management">cockpit-server-management</a></li>
+        <li><a target="_blank" href="https://opensource.com/article/21/5/raspberry-pi-cockpit">raspberry-pi-cockpit</a></li>
+        <li><a target="_blank" href="https://cockpit-project.org/">cockpit-project.org </a></li>
+        <li><a target="_blank" href="https://cockpit-project.org/blog/creating-plugins-for-the-cockpit-user-interface.html">creating-plugins-for-the-cockpit-user-interface</a></li>
+</ul>
+
+</body>
+</html>

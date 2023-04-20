@@ -1,0 +1,187 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="../../css/stylesheet.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/heading.css">
+  <link rel="stylesheet" href="../../css/body.css">
+  <script src="https://kit.fontawesome.com/e37e0501b8.js" crossorigin="anonymous"></script>
+
+  <title>Extending GPT partition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+</head>
+
+<body><br><center>
+  <div style="display: inline-block; vertical-align:middle;">
+  <a href="../../index.html" style="text-decoration: none;"><b>BEEGROVE</b> <i class="fa-solid fa-microchip" style="font-size:26px"></i></a> 
+
+  <br><hr/><div style="text-align: justify;display: inline-block; width: 100%;">
+  <a class="title" href="../../pages/contact/contact.html">CONTACT</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a class="title" href="../../pages/references/references.html">REFERENCES</a>
+  </center><br><br>
+
+  <p>AUTHOR: <a style="text-decoration: none;"><u>BeeGroove Members</u> <i class="fa-solid fa-microchip"></i></a></p>
+  <p>24/07/2022 - Extending GPT partition. Command line/Yocto systemd implementation</p>
+
+<p>
+    During Yocto BSP development a common task is resize last GPT partition at the maximum disk size at first boot.
+    This help to reduce Yocto image size and help the users to use all disk size. To do this we can proceed using:
+    <ul class="columns" data-columns="2">
+      <li>GPLv2: gptfdisk</li>
+    </ul>
+</p>
+
+
+<div class="heading">GPLv2: sgdisk command line</div><hr />
+<p>
+    In order to resize last GPT partition of a disk we need the following infos of the disk/partition:
+    <ul class="columns" data-columns="2">
+      <li>disk-dev: e.g. /dev/mmcblk0</li>
+      <li>partition-number: e.g. 6 (/dev/mmcblk0p6)</li>
+      <li>partition-name: e.g. home</li>
+      <li>partition-guid: e.g. 8A98FF9D-DE45-4A5E-90E9-49982B5A72A3</li>
+      <li>partition-typecode: e.g. 0700</li>
+      <li>partition-start-sector: e.g. 3008462 (every sector is 512 byte)</li>
+    </ul>
+    These infos can be dumped using the following command:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">sgdisk -p /dev/mmcblk0
+</code>
+</pre>
+
+<p>
+  From this last partition (6) of disk (/dev/mmcblk0) can be expand at maximum disk size using:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">sgdisk -e /dev/mmcblk0 (0 depends on you disk number)
+sgdisk -d 6 -n 6:3008462:0 -c 6:home -u 6:8A98FF9D-DE45-4A5E-90E9-49982B5A72A3 -t 6:0700 /dev/mmcblk0
+</code>
+</pre>
+
+<div class="heading">GPLv2: sgdisk Yocto systemd service</div><hr />
+<p>
+    Next step is create Yocto recipe that do the job. In particular the goal is create a systemd service that grow up last gpt partition
+    during first boot. For this we need to setup the following recipe folder tree:
+</p>
+
+<pre>
+<code id="code" class="hljs language-plaintext">resizepart/
+  ├── files/
+  │   ├── grow-partition.service
+  │   └── resize_part.sh
+  └── resizepart.bb
+</code>
+</pre>
+
+<p>
+    Yocto recipe: resizepart.bb
+</p>
+
+
+<pre>
+<code id="code" class="hljs language-plaintext">FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+SRC_URI:append := "  \
+  file://grow-partition.service \
+  file://resize_part.sh \
+"
+
+inherit systemd
+
+SYSTEMD_PACKAGES += "grow-part"
+SYSTEMD_SERVICE:grow-part = "grow-partition.service"
+SYSTEMD_AUTO_ENABLE = "enable"
+
+RDEPENDS:grow-part += "gptfdisk"
+
+do_install:append() {
+  install -d 644 ${D}${sysconfdir}/init.d
+  install -m 0755 ${WORKDIR}/resize_part.sh ${D}${sysconfdir}/init.d
+
+  install -d ${D}${systemd_unitdir}/system/
+  install -m 0644 ${WORKDIR}/grow-partition.service ${D}${systemd_unitdir}/system/
+}
+
+RRECOMMENDS:${PN}:append = " grow-part"
+PACKAGES =+ "grow-part"
+FILES:grow-part = "${systemd_unitdir}/system/grow-data-partition.service"
+</code>
+</pre>
+
+
+<p>
+  systemd service: grow-partition.service
+</p>
+
+
+<pre>
+<code id="code" class="hljs language-plaintext">[Unit]
+Description=Grow partition size Service
+DefaultDependencies=no
+Before=home.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStart=/etc/init.d/resize_part.sh
+
+[Install]
+WantedBy=home.mount
+</code>
+</pre>
+
+<p>
+  init.d service script: resize_part.sh
+</p>
+
+
+<pre>
+<code id="code" class="hljs language-plaintext">#!/bin/sh
+# Grow up last partition side till the end of the disk size
+
+PART_NAME=home
+PART_DEV=/dev/mmcblk0
+PART_PART_NUM=6
+PART_SECTOR_START=$(sgdisk -p $PART_DEV | grep $PART_NAME | awk '{print $2}')
+PART_GUID=$(sgdisk $PART_DEV -p | grep GUID | awk '{print $4}')
+PART_TYPECODE=$(sgdisk -p $PART_DEV | grep $PART_NAME | awk '{print $6}')
+PART_IS_NOT_FULL_SIZE_ERR=$(sgdisk -v $PART_DEV | grep -i problem | grep secondary)
+
+# Check if partition is already at full size
+if [ -n "$PART_IS_NOT_FULL_SIZE_ERR" ]; then
+    # move second header to end of disk
+    sgdisk -e $PART_DEV
+
+    # sgdisk option used:
+    #
+    # -d delete's PART_PART_NUM partition
+    # -n create new partition PART_PART_NUM start from PART_SECTOR_START
+    #    sector till the End sector (End sector = "0")
+    # -c set label of PART_PART_NUM to PART_NAME
+    # -u set GUID of PART_PART_NUM to PART_GUID
+    # -t set PART_TYPECODE to PART_PART_NUM
+    sgdisk -d $PART_PART_NUM \
+    -n $PART_PART_NUM:$PART_SECTOR_START:0 \
+    -c $PART_PART_NUM:$PART_NAME \
+    -u $PART_PART_NUM:$PART_GUID \
+    -t $PART_PART_NUM:$PART_TYPECODE \
+    $PART_DEV
+else
+    echo "Partition: $PART_NAME already at maximum size, skipped"
+fi
+</code>
+</pre>
+
+
+
+<div class="heading">References</div><hr />
+<ul class="columns" data-columns="2">
+        <li><a target="_blank" href="https://superuser.com/questions/660309/live-resize-of-a-gpt-partition-on-linux">live-resize-of-a-gpt-partition-on-linux </a></li>
+</ul>
+
+</body>
+</html>
